@@ -1,10 +1,8 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-from io import StringIO
 
 st.set_page_config(page_title="Аналіз Telegram-каналу", layout="wide")
-
 st.title("📊 Аналіз Telegram-каналу")
 
 # --- Завантаження даних ---
@@ -15,53 +13,60 @@ def load_data(uploaded_file):
     else:
         df = pd.read_csv("sample_posts.csv", parse_dates=['datetime'])
 
-    df['date'] = df['datetime'].dt.date
+    # Примусове перетворення числових колонок
+    df['views'] = pd.to_numeric(df['views'], errors='coerce')
+    df['reactions'] = pd.to_numeric(df['reactions'], errors='coerce')
+    df = df.dropna(subset=['datetime', 'views', 'reactions'])
+
+    df['date'] = pd.to_datetime(df['datetime'].dt.date)  # важливо: datetime для сортування
     df['hour'] = df['datetime'].dt.hour
 
-    # Використовуємо числовий день тижня (0=Понеділок ... 6=Неділя)
-    days_uk = ['Понеділок', 'Вівторок', 'Середа', 'Четвер', 'П’ятниця', 'Субота', 'Неділя']
+    days_uk = ['Понеділок','Вівторок','Середа','Четвер','П’ятниця','Субота','Неділя']
     df['weekday'] = df['datetime'].dt.weekday.map(lambda x: days_uk[x])
-
-    # Обчислення залучення
     df['engagement'] = df['reactions'] / df['views']
-    return df
 
+    return df
 
 uploaded = st.file_uploader("📥 Завантаж CSV-файл з постами", type=["csv"])
 df = load_data(uploaded)
 
-st.write("### Дані:")
-st.dataframe(df.head())
+if df is not None and not df.empty:
+    st.write("### Дані:")
+    st.dataframe(df.head())
 
-# --- Графік активності ---
-activity = df.groupby('date').agg({'views': 'mean', 'reactions': 'sum'}).reset_index()
-st.write("### 📅 Графік активності")
+    # --- Графік активності ---
+    st.write("### 📅 Графік активності")
+    activity = df.groupby('date').agg({'views':'mean','reactions':'sum'}).reset_index()
+    activity = activity.sort_values('date')  # щоб дати йшли по порядку
 
-fig, ax = plt.subplots(figsize=(8, 4))
-ax.plot(activity['date'], activity['views'], marker='o', linewidth=1.5, label='Середні перегляди')
-ax.set_xlabel('Дата', fontsize=9)
-ax.set_ylabel('Перегляди', fontsize=9)
-ax.legend(fontsize=8)
-ax.tick_params(axis='both', labelsize=8)
-st.pyplot(fig)
+    fig, ax = plt.subplots(figsize=(6,3))  # зменшений розмір
+    ax.plot(activity['date'], activity['views'], marker='o', linewidth=1.5, label='Середні перегляди')
+    ax.set_xlabel('Дата', fontsize=8)
+    ax.set_ylabel('Перегляди', fontsize=8)
+    ax.legend(fontsize=7)
+    ax.tick_params(axis='both', labelsize=7, rotation=45)
+    st.pyplot(fig, clear_figure=True)
 
-# --- Коефіцієнти залучення ---
-er_mean = df['engagement'].mean()
-er_max = df['engagement'].max()
-er_min = df['engagement'].min()
+    # --- Коефіцієнти залучення ---
+    er_mean = df['engagement'].mean()
+    er_max = df['engagement'].max()
+    er_min = df['engagement'].min()
 
-st.write("### 💬 Коефіцієнт залучення")
-st.metric("Середній ER", f"{er_mean:.2%}")
-st.metric("Максимальний ER", f"{er_max:.2%}")
-st.metric("Мінімальний ER", f"{er_min:.2%}")
+    st.write("### 💬 Коефіцієнт залучення")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Середній ER", f"{er_mean:.2%}")
+    col2.metric("Максимальний ER", f"{er_max:.2%}")
+    col3.metric("Мінімальний ER", f"{er_min:.2%}")
 
-# --- Найефективніший час ---
-time_eff = df.groupby('hour').agg({'views': 'mean', 'engagement': 'mean'}).reset_index()
-best_hour_views = time_eff.loc[time_eff['views'].idxmax(), 'hour']
-best_hour_er = time_eff.loc[time_eff['engagement'].idxmax(), 'hour']
+    # --- Найефективніший час ---
+    time_eff = df.groupby('hour').agg({'views':'mean','engagement':'mean'}).reset_index()
+    best_hour_views = int(time_eff.loc[time_eff['views'].idxmax(),'hour'])
+    best_hour_er = int(time_eff.loc[time_eff['engagement'].idxmax(),'hour'])
 
-st.write("### ⏰ Найефективніший час для публікацій")
-st.info(f"Найкраща година за переглядами: **{best_hour_views}:00**")
-st.info(f"Найкраща година за залученням: **{best_hour_er}:00**")
+    st.write("### ⏰ Найефективніший час для публікацій")
+    st.info(f"Найкраща година за переглядами: **{best_hour_views}:00**")
+    st.info(f"Найкраща година за залученням: **{best_hour_er}:00**")
 
-st.success("✅ Аналіз завершено. Дані успішно оброблено!")
+    st.success("✅ Аналіз завершено. Дані успішно оброблено!")
+else:
+    st.warning("⚠️ Дані відсутні або некоректні.")

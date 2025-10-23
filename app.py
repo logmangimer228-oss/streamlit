@@ -17,18 +17,12 @@ def load_data(uploaded_file):
 
     df['date'] = df['datetime'].dt.date
     df['hour'] = df['datetime'].dt.hour
-    df['weekday'] = df['datetime'].dt.day_name()
 
-    ukrainian_days = {
-        'Monday': 'Понеділок',
-        'Tuesday': 'Вівторок',
-        'Wednesday': 'Середа',
-        'Thursday': 'Четвер',
-        'Friday': 'П’ятниця',
-        'Saturday': 'Субота',
-        'Sunday': 'Неділя'
-    }
-    df['weekday'] = df['weekday'].map(ukrainian_days)
+    # Використовуємо числовий день тижня (0=Понеділок ... 6=Неділя)
+    days_uk = ['Понеділок', 'Вівторок', 'Середа', 'Четвер', 'П’ятниця', 'Субота', 'Неділя']
+    df['weekday'] = df['datetime'].dt.weekday.map(lambda x: days_uk[x])
+
+    # Обчислення залучення
     df['engagement'] = df['reactions'] / df['views']
     return df
 

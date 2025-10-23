@@ -32,7 +32,7 @@ df = load_data(uploaded)
 
 if df is not None and not df.empty:
     st.write("### Дані:")
-    st.dataframe(df.head())
+    st.dataframe(df.sort_values('datetime'))
 
     # --- Графік активності ---
     st.write("### 📅 Графік активності")

@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 st.set_page_config(page_title="Аналіз Telegram-каналу", layout="wide")
 st.title("📊 Аналіз Telegram-каналу")
 
-# --- Завантаження даних ---
 @st.cache_data
 def load_data(uploaded_file):
     if uploaded_file is not None:
@@ -13,7 +12,6 @@ def load_data(uploaded_file):
     else:
         df = pd.read_csv("sample_posts.csv", parse_dates=['datetime'])
 
-    # Примусове перетворення числових колонок
     df['views'] = pd.to_numeric(df['views'], errors='coerce')
     df['reactions'] = pd.to_numeric(df['reactions'], errors='coerce')
     df = df.dropna(subset=['datetime', 'views', 'reactions'])
@@ -34,7 +32,6 @@ if df is not None and not df.empty:
     st.write("### Дані:")
     st.dataframe(df.sort_values('datetime'))
 
-    # --- Графік активності ---
     st.write("### 📅 Графік активності")
     activity = df.groupby('date').agg({'views':'mean','reactions':'sum'}).reset_index()
     activity = activity.sort_values('date')  # щоб дати йшли по порядку
@@ -47,7 +44,6 @@ if df is not None and not df.empty:
     ax.tick_params(axis='both', labelsize=7, rotation=45)
     st.pyplot(fig, clear_figure=True)
 
-    # --- Коефіцієнти залучення ---
     er_mean = df['engagement'].mean()
     er_max = df['engagement'].max()
     er_min = df['engagement'].min()
@@ -58,7 +54,6 @@ if df is not None and not df.empty:
     col2.metric("Максимальний ER", f"{er_max:.2%}")
     col3.metric("Мінімальний ER", f"{er_min:.2%}")
 
-    # --- Найефективніший час ---
     time_eff = df.groupby('hour').agg({'views':'mean','engagement':'mean'}).reset_index()
     best_hour_views = int(time_eff.loc[time_eff['views'].idxmax(),'hour'])
     best_hour_er = int(time_eff.loc[time_eff['engagement'].idxmax(),'hour'])
